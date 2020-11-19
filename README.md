@@ -10,10 +10,11 @@ You can find the above papers, and other more papers through this link:  http://
 This is flat type data from Optical Pulsed Thermography(OPT) system, you can download it through Google cloud storage by this link:
 https://drive.google.com/file/d/1r_x-cFsKaQtXRl5yehhfvLQ3pTXE8DKI/view?usp=sharing  
 After download the `data-plane_0.tar.gz`, put this in the `research` folder, then:   
-    tar zxvf plane_0.tar.gz
-    mkdir pca_imgs 
-    python pca.py
+>>tar zxvf plane_0.tar.gz  
+>>mkdir pca_imgs   
+>>python pca.py  
 you can get the pca-processed results in the `pca_imgs` folder for all the data in the `plane_0` folder.  
-one of the examples is `N1_1.png`:![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/N1_1.png)
+one of the examples is `N1_1.png`:  
+![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/N1_1.png)
 
 
