@@ -23,4 +23,6 @@ When you check the values of these mat files in the `plane_0` folder, if you fin
 python version:3.7.9  
 tensorflow version:2.2.0  
 There are some other dependencies, like matplotlib,opencv-python,etc, you can find these in .py files, when necessary, you can install them. It's pretty easy.
-
+## 4.Labels
+The prevalent way to label these thermal iamges is using `Labelme` tool, because when doing one experment, the euipments do not move, so we think one mat file have one ground truth. Three experienced human annotators have been employed to annotate the original thermal image sequences or the processed images by PCA algorithm independently. We can use pca to process these mat files first to deepen the defect information through `pca.py`. Then we can use labelme to label pca images, we can get json files. After that, if we want to get png/jpg format files for labels, we can use `LabelMe_proceed.py` to convert json files into png or jpg images.  
+The converted labels can be seen in `research/labels` folder
