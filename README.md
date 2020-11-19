@@ -13,7 +13,8 @@ After download the `data-plane_0.tar.gz`, put this in the `research` folder, the
 >>tar zxvf plane_0.tar.gz  
 >>mkdir pca_imgs   
 >>python pca.py  
-you can get the pca-processed results in the `pca_imgs` folder for all the data in the `plane_0` folder.  
+
+>you can get the pca-processed results in the `pca_imgs` folder for all the data in the `plane_0` folder.  
 one of the examples is `N1_1.png`:  
 ![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/N1_1.png)
 
