@@ -19,5 +19,8 @@ one of the examples is `N1_1.png`:
 ![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/N1_1.png)
 
 When you check the values of these mat files in the `plane_0` folder, if you find some of them are under zero, you may get confused of these negative values, because all of values represent the real-time temperature of one specimen, why the temperature is less than zero? Because every frame of these infrared thermal data was subtracted by it's first frame in order to reduce the influence of the background and noise.
-
+## 3.Dependencies
+python version:3.7.9  
+tensorflow version:2.2.0  
+There are some other dependencies, like matplotlib,opencv-python,etc, you can find these in .py files, when necessary, you can install them. It's pretty easy.
 
