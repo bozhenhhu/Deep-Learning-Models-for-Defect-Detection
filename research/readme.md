@@ -17,18 +17,18 @@ one of cluster methods, operate on a single image
 If you use `labelme` to label data, you can get json files, if you want to convert json files into png/jpg format, you can use this file.
 ## 9.mat_process.py
 This is the main procedure to process training files , train and test UNet++ model.   
-The trained models named huv27.h5, which can be found through Baidu cloud storage:
-链接：https://pan.baidu.com/s/1_RfwP52neXcWd2DHgqW8xw 
-提取码：51s6 
-复制这段内容后打开百度网盘手机App，操作更方便哦
-If you set `args.mode` not equal to 0, it run test procedure, one of the results is hu27_xy_20200812_007g_25_1.bmp  
-![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/research/hu27_xy_20200812_0007g_25_1.bmp)
+The trained models named huv27.h5, which can be found through Baidu cloud storage:  
+链接：https://pan.baidu.com/s/1_RfwP52neXcWd2DHgqW8xw   
+提取码：51s6   
+复制这段内容后打开百度网盘手机App，操作更方便哦  
+If you set `args.mode` not equal to 0, it run test procedure, one of the results is hu27_xy_20200812_007g_25_1.bmp    
+![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/research/hu27_xy_20200812_0007g_25_1.bmp)  
 ## 10.model_test.m  
-It use matlab to load trained models(huv27.h5), and rewrite data process codes using Matlab depended on Python codes in `mat_process.py`  
-huv25.h5 and one test data defectnetinput.csv can be got by the above link.  
-The output images are showing:
-![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/research/matlab_test.png)
-![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/research/matlab_test_result.png)
+It use matlab to load trained models(huv27.h5), and rewrite data process codes using Matlab depended on Python codes in `mat_process.py`    
+huv25.h5 and one test data defectnetinput.csv can be got by the above link.    
+The output images are showing:    
+![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/research/matlab_test.png)    
+![](https://github.com/bozhenhhu/Deep-Learning-Models-for-Defect-Detection/blob/main/research/matlab_test_result.png)  
 ## 11.models.py
 It has a few deep learning models, like UNet, UNet++ 
 ## 12.pca.py
