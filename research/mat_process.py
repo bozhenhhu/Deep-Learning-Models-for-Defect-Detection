@@ -17,7 +17,7 @@ def seeds(seed):
     np.random.seed(seed)
     tf.random.set_seed(seed)
 
-
+args = Hparams()
 seeds(args.seed)
 
 
