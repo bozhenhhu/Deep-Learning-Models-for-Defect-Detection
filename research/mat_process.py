@@ -10,6 +10,7 @@ from research.models import *
 from research.utils import *
 
 
+
 def seeds(seed):
     warnings.filterwarnings("ignore")
     random.seed(seed)
@@ -167,7 +168,8 @@ def win_test_data_process(name0, path1, datas, num_slices, names, sub_frame=Fals
     return datas, num_slices, names
 
 
-#data collected by 20200923 at Chengfei
+#data collected by 20200923 at Chengfei; 
+#These data are provided by other organizations and are not convenient for disclosure；you can choose some  data from D1-NT
 train_name_plane = ['0_20200615_4', '001g', '2_200615_1', '002g', '3_200615',
                     '005g', '046g', '051g', '166g',
                     '0602(1)', '0602(4)', '0602(5)', '0602(2)',
