@@ -77,7 +77,7 @@ def antirectifier_output_shape(input_shape):
     return tuple(new_shape)
 
 
-def UNet_plus3D_st_pca(num_class=1):
+def UNet_plus3D_pca(num_class=1):
     nb_filter = [32, 64, 128, 256, 512]
     img_input = Input(shape=(args.Time, args.height , args.width, 1), name='main_input')
     conv1_1 = standard_unit(img_input, stage='11', nb_filter=nb_filter[0])
@@ -128,6 +128,104 @@ def UNet_plus3D_st_pca(num_class=1):
                    kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv5_1))
     conv4_2 = Concatenate(name='merge42', axis=4)([up4_2, conv4_1])
     conv4_2 = standard_unit(conv4_2, stage='42', nb_filter=nb_filter[3])
+
+    up3_3 = Conv3D(nb_filter[2], 2, name='up33', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv4_2))
+    conv3_3 = Concatenate(name='merge33', axis=4)([up3_3, conv3_1, conv3_2])
+    conv3_3 = standard_unit(conv3_3, stage='33', nb_filter=nb_filter[2])
+
+    up2_4 = Conv3D(nb_filter[1], 2, name='up24', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv3_3))
+    conv2_4 = Concatenate(name='merge24', axis=4)([up2_4, conv2_1, conv2_2, conv2_3])
+    conv2_4 = standard_unit(conv2_4, stage='24', nb_filter=nb_filter[1])
+
+    up1_5 = Conv3D(nb_filter[0], 2, name='up15', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv2_4))
+    conv1_5 = Concatenate(name='merge15', axis=4)([up1_5, conv1_1, conv1_2, conv1_3, conv1_4])
+    conv1_5 = standard_unit(conv1_5, stage='15', nb_filter=nb_filter[0])
+
+    ####################################
+    conv1_4 = Lambda(lambda x: x[:, 10, :, :, :], name='sub_time')(conv1_5)
+
+    pca = Lambda(function=antirectifier, output_shape=antirectifier_output_shape, name='lambda_pca')(img_input)
+    pca = Activation('relu')(pca)
+    pca = MaxPooling2D(pool_size=(2, 2), strides=1, padding='same')(pca)
+    #####
+    pca = Concatenate(name='pca_merage', axis=3)([conv1_4, pca])
+    conv1_4 = ECA(pca, dim=36)
+    conv1_4 = Conv2D(36, 3, activation='relu', padding='same', kernel_initializer='he_normal', kernel_regularizer=l2(1e-4),
+                 name='pca_conv_1')(conv1_4)
+    conv1_4 = Conv2D(36, 3, activation='relu', padding='same', kernel_initializer='he_normal',
+                     kernel_regularizer=l2(1e-4),
+                     name='pca_conv_2')(conv1_4)
+    #################################
+
+    conv1_4_1 = Conv2D(2, 3, activation='relu', kernel_initializer='he_normal',padding='same')(conv1_4)
+    nestnet_output_4 = Conv2D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
+                              padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
+
+    model = tf.keras.Model(input=img_input, output=[nestnet_output_4])
+    print(model.summary())
+    return model
+
+
+def UNet_plus3D_st_pca(num_class=1):
+    nb_filter = [32, 64, 128, 256, 512]
+    img_input = Input(shape=(args.Time, args.height , args.width, 1), name='main_input')
+    conv1_1 = standard_unit(img_input, stage='11', nb_filter=nb_filter[0])
+    pool1 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2), name='pool1')(conv1_1)
+
+    conv2_1 = standard_unit(pool1, stage='21', nb_filter=nb_filter[1])
+    pool2 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2), name='pool2')(conv2_1)
+
+    up1_2 = Conv3D(nb_filter[0], 2, name='up12', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv2_1))
+    conv1_2 = Concatenate(name='merge12', axis=4)([up1_2, conv1_1])
+    conv1_2 = standard_unit(conv1_2, stage='12', nb_filter=nb_filter[0])
+
+    conv3_1 = standard_unit(pool2, stage='31', nb_filter=nb_filter[2])
+    pool3 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2), name='pool3')(conv3_1)
+
+    up2_2 = Conv3D(nb_filter[1], 2, name='up22', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv3_1))
+    conv2_2 = Concatenate(name='merge22', axis=4)([up2_2, conv2_1])
+    conv2_2 = standard_unit(conv2_2, stage='22', nb_filter=nb_filter[1])
+
+    up1_3 = Conv3D(nb_filter[0], 2, name='up13', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv2_2))
+    conv1_3 = Concatenate(name='merge13', axis=4)([up1_3, conv1_1, conv1_2])
+    conv1_3 = standard_unit(conv1_3, stage='13', nb_filter=nb_filter[0])
+
+    conv4_1 = standard_unit(pool3, stage='41', nb_filter=nb_filter[3])
+    conv4_1 = ECA(conv4_1, dim=nb_filter[3])
+    conv4_1 = st_Attention(conv4_1,stage='41')
+    pool4 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2), name='pool4')(conv4_1)
+
+    up3_2 = Conv3D(nb_filter[2], 2, name='up32', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv4_1))
+    conv3_2 = Concatenate(name='merge32', axis=4)([up3_2, conv3_1])
+    conv3_2 = standard_unit(conv3_2, stage='32', nb_filter=nb_filter[2])
+
+    up2_3 = Conv3D(nb_filter[1], 2, name='up23', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv3_2))
+    conv2_3 = Concatenate(name='merge23', axis=4)([up2_3, conv2_1, conv2_2])
+    conv2_3 = standard_unit(conv2_3, stage='23', nb_filter=nb_filter[1])
+
+    up1_4 = Conv3D(nb_filter[0], 2, name='up14', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv2_3))
+    conv1_4 = Concatenate(name='merge14', axis=4)([up1_4, conv1_1, conv1_2, conv1_3])
+    conv1_4 = standard_unit(conv1_4, stage='14', nb_filter=nb_filter[0])
+
+    conv5_1 = standard_unit(pool4, stage='51', nb_filter=nb_filter[4])
+    conv5_1 = ECA(conv5_1, dim=nb_filter[4])
+    conv5_1 = st_Attention(conv5_1, stage='51')
+
+    up4_2 = Conv3D(nb_filter[3], 2, name='up42', padding='same', activation='relu',
+                   kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv5_1))
+    conv4_2 = Concatenate(name='merge42', axis=4)([up4_2, conv4_1])
+    conv4_2 = standard_unit(conv4_2, stage='42', nb_filter=nb_filter[3])
+    conv4_2 = ECA(conv4_2, dim=nb_filter[3])
+    conv4_2 = st_Attention(conv4_2, stage='42')
 
     up3_3 = Conv3D(nb_filter[2], 2, name='up33', padding='same', activation='relu',
                    kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv4_2))
