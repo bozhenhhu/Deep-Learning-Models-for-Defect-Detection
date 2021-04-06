@@ -2,24 +2,12 @@
 from tensorflow.keras.callbacks import *
 import copy
 from sklearn.utils import shuffle
-import os
-import warnings
+
+
 import matplotlib.image as mpimg
 from research.augmentaton import *
 from research.models import *
 from research.utils import *
-
-
-
-def seeds(seed):
-    warnings.filterwarnings("ignore")
-    random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    np.random.seed(seed)
-    tf.random.set_seed(seed)
-
-args = Hparams()
-seeds(args.seed)
 
 
 # Custom loss function
@@ -28,7 +16,7 @@ def dice_coef(y_true, y_pred):
     y_true_f = tf.keras.backend.flatten(y_true)
     y_pred_f = tf.keras.backend.flatten(y_pred)
     intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
-    dice = (2. * intersection + smooth) / (tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f) + smooth)
+    dice = (2 * intersection + smooth) / (tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f) + smooth)
     return dice
 
 
@@ -37,7 +25,7 @@ def dice_coef_loss(y_true, y_pred):
 
 
 def bce_dice_loss(y_true, y_pred):
-    return 2 * tf.keras.losses.binary_crossentropy(y_true, y_pred) + dice_coef_loss(y_true, y_pred)  # loss1
+    return args.l_weight * tf.keras.losses.binary_crossentropy(y_true, y_pred) + dice_coef_loss(y_true, y_pred)  # loss1
 
 
 def read_img(path):  # read img of labels
@@ -47,96 +35,118 @@ def read_img(path):  # read img of labels
     return img
 
 
-def one_data_process_plane3D(name0, path1, datas, labels, sub_frame, use_rotate=False):
+def one_data_process_plane3D(name0, path1, datas, labels):
     '''
     :param name0: mat name, eg: if one mat named 1.mat, then name0 = 1
     :param path1: path to load a specific mat data
     :param datas: list to save data
     :param labels: list to save labels
-    :param sub_frame:whether subtract the first frame or not
-    :param use_rotate:whether use rotate or not
     :return:3D datas, labels
     '''
-    label_path = './labels/{}_label.png'.format(name0)
+    label_path = args.label_dir + '{}_label.png'.format(name0)
     img = cv2.imread(label_path, 0)
     if img.shape != (args.height, args.width):
         img = cv2.resize(img, (args.height, args.width))
     img = img.astype(np.float32) / 255.
+
     data_struct = sio.loadmat(path1)
     data = data_struct['data']
+
+    # subtract frame and sample
     t_len = data.shape[2]
-    if not sub_frame and not use_rotate:
-        if t_len >= 220:
-            data = data[:, :, -190:-30] #data length:160
-        elif t_len >= 190:
-            data = data[:, :, 30:190]   #data length:160
-        elif t_len >= 160:
-            data = data[:, :, -160:]    #data length:160
-        elif t_len >= 128:
-            data = data[:, :, -128:]    #data length:128
-        elif t_len >= 96:
-            data = data[:, :, 30:94]    #data length:164
-        elif t_len >= 64:
-            data = data[:, :, 0:64] #data length:64
-        elif t_len >= 32:
-            data = data[:, :, 0:32] #data length:32
-        elif t_len >= 16:
-            data = data[:, :, 0:16] #data length:16
-        else:
-            return datas, labels
-        data_ = np.zeros((args.Time, args.height, args.width))
-        num = data.shape[2]//args.Time
-        for k in range(num):
-            d = list(np.arange(start=k, stop=data.shape[2], step=num))
-            for i in range(len(d)):
-                pre_frame = data[:, :, d[i]]
-                pre_frame = cv2.resize(pre_frame, (args.height, args.width))
-                data_[i, :, :] = pre_frame.astype(np.float32) / 255.
-            datas.append(data_)
-            labels.append(img)
+    if args.sub_frame == 'first':
+        sub = data[:, :, 0]
+    elif args.sub_frame == 'last':
+        sub = data[:, :, -1]
+    elif args.sub_frame == 'last_mean':
+        sub = data[:, :, args.mean_len:]
+        sub = np.mean(sub, axis=2, keepdims=False)
+    else:
+        sub = np.zeros((data.shape[0], data.shape[1]))
+    sub = sub.astype(np.float32) / 255.
+
+    if t_len >= 220:
+        data = data[:, :, -190:-30]  #data length:160
+    elif t_len >= 190:
+        data = data[:, :, 30:190]    #data length:160
+    elif t_len >= 160:
+        data = data[:, :, -160:]     #data length:160
+    elif t_len >= 128:
+        data = data[:, :, -128:]     #data length:128
+    elif t_len >= 96:
+        data = data[:, :, 30:94]     #data length:164
+    elif t_len >= 64:
+        data = data[:, :, 0:64]      #data length:64
+    else:
+        return datas, labels
+
+    data = data.astype(np.float32) / 255.
+    data = data - np.tile(sub[:, :, np.newaxis], (1, 1, data.shape[2]))
+
+    data_ = np.zeros((args.Time, args.height, args.width))
+    num = data.shape[2]//args.Time
+    for k in range(num):
+        d = list(np.arange(start=k, stop=data.shape[2], step=num))
+        for i in range(len(d)):
+            pre_frame = data[:, :, d[i]]
+            data_[i, :, :] = cv2.resize(pre_frame, (args.height, args.width))
+        datas.append(data_)
+        labels.append(img)
     return datas, labels
 
 
-def one_data_process_plane2D(name0, path1, datas, labels, sub_frame, use_rotate=False):
+def one_data_process_plane2D(name0, path1, datas, labels):
     '''
     :param name0: mat name, eg: if one mat named 1.mat, then name0 = 1
     :param path1: path to load a specific mat data
     :param datas: list to save data
     :param labels: list to save labels
-    :param sub_frame:whether subtract the first frame or not
-    :param use_rotate:whether use rotate or not
     :return:2D datas, labels
     '''
-    label_path = './labels/{}_label.png'.format(name0)
+    # label
+    label_path = args.label_dir + '{}_label.png'.format(name0)
     img = cv2.imread(label_path, 0)
     if img.shape != (args.height, args.width):
         img = cv2.resize(img, (args.height, args.width))
     img = img.astype(np.float32) / 255.
+
     data_struct = sio.loadmat(path1)
     data = data_struct['data']
-    first = data[:, :, 0]
-    first = first.astype(np.float32) / 255.
+
+    # subtract frame
     t_len = data.shape[2]
-    heating_num = t_len//4
+    heating_num = t_len // args.heating_rate
+    if args.sub_frame == 'first':
+        sub = data[:, :, 0]
+    elif args.sub_frame == 'last':
+        sub = data[:, :, -1]
+    elif args.sub_frame == 'last_mean':
+        sub = data[:, :, args.mean_len:]
+        sub = np.mean(sub, axis=2, keepdims=False)
+    else:
+        sub = np.zeros((data.shape[0], data.shape[1]))
+    sub = sub.astype(np.float32) / 255.
     data = data[:, :, heating_num:min(t_len, heating_num+160)]
     data = data.astype(np.float32) / 255.
-    if sub_frame and use_rotate:
+    data = data - np.tile(sub[:, :, np.newaxis], (1, 1, data.shape[2]))
+
+    #sample and resize
+    if args.use_rotate:
         solution = Solution()
-        for i in range(0, data.shape[2], 2):
-            pre_frame = cv2.resize((data[:, :, i] - first), (args.height, args.width))
+        for i in range(0, data.shape[2], args.sample_rate):
+            pre_frame = cv2.resize(data[:, :, i] , (args.height, args.width))
             datas.append(pre_frame)
             frame_copy = copy.deepcopy(pre_frame)
 
             frame_copy = solution.rotate(frame_copy)
             datas.append(frame_copy)
-            if img.shape != (args.height, args.width):
-                img = cv2.resize(img, (args.height, args.width))
+
             labels.append(img)
             img_copy = copy.deepcopy(img)
             img_copy = solution.rotate(img_copy)
             labels.append(img_copy)
-    elif not sub_frame and not use_rotate:
-        for i in range(0, data.shape[2], 2):
+    else:
+        for i in range(0, data.shape[2], args.sample_rate):
             pre_frame = data[:, :, i]
             if pre_frame.shape != (args.height, args.width):
                 pre_frame = cv2.resize(pre_frame, (args.height, args.width))
@@ -148,29 +158,66 @@ def one_data_process_plane2D(name0, path1, datas, labels, sub_frame, use_rotate=
 def win_test_data_process(name0, path1, datas, num_slices, names, sub_frame=False):
     data_struct = sio.loadmat(path1)
     data = data_struct['data']
-    first = data[:, :, 0]
-    first = first.astype(np.float32) / 255.
+
+    # subtract frame
     t_len = data.shape[2]
-    heating_num = t_len // 4
-    data = data[:, :, heating_num:min(t_len, heating_num + 160)]
-    data = data.astype(np.float32) / 255.
-    if not sub_frame:
+    heating_num = t_len // args.heating_rate
+    if args.sub_frame == 'first':
+        sub = data[:, :, 0]
+    elif args.sub_frame == 'last':
+        sub = data[:, :, -1]
+    elif args.sub_frame == 'last_mean':
+        sub = data[:, :, args.mean_len:]
+        sub = np.mean(sub, axis=2, keepdims=False)
+    else:
+        sub = np.zeros((data.shape[0], data.shape[1]))
+    sub = sub.astype(np.float32) / 255.
+    if args.data_mode == '2D':
+        data = data[:, :, heating_num:min(t_len, heating_num + 160)]
+        data = data.astype(np.float32) / 255.
+        data = data - np.tile(sub[:, :, np.newaxis], (1, 1, data.shape[2]))
+        data = data[:, :, heating_num:min(t_len, heating_num + 160)]
         for i in range(0, data.shape[2], 30):
             pre_frame = data[:, :, i]
             if pre_frame.shape != (args.height, args.width):
                 pre_frame = cv2.resize(pre_frame, (args.height, args.width))
             datas.append(pre_frame)
-            names.append(name0)
+    elif args.data_mode == '3D':
+        if t_len >= 220:
+            data = data[:, :, -190:-30]  # data length:160
+        elif t_len >= 190:
+            data = data[:, :, 30:190]  # data length:160
+        elif t_len >= 160:
+            data = data[:, :, -160:]  # data length:160
+        elif t_len >= 128:
+            data = data[:, :, -128:]  # data length:128
+        elif t_len >= 96:
+            data = data[:, :, 30:94]  # data length:164
+        elif t_len >= 64:
+            data = data[:, :, 0:64]  # data length:64
+        else:
+            return datas, labels
+        data = data.astype(np.float32) / 255.
+        data = data - np.tile(sub[:, :, np.newaxis], (1, 1, data.shape[2]))
 
+        data_ = np.zeros((args.Time, args.height, args.width))
+        num = data.shape[2] // args.Time
+        for k in range(1):
+            d = list(np.arange(start=k, stop=data.shape[2], step=num))
+            for i in range(len(d)):
+                pre_frame = data[:, :, d[i]]
+                data_[i, :, :] = cv2.resize(pre_frame, (args.height, args.width))
+            datas.append(data_)
+
+    names.append(name0)
     num_slices.append(len(datas))
 
     print('since added {}, the number of slices is {}'.format(names[-1], num_slices[-1]))
     return datas, num_slices, names
 
 
-#data collected by 20200923 at Chengfei; 
-#These data are provided by other organizations and are not convenient for disclosure；you can choose some  data from D1-NT
-train_name_plane = ['0_20200615_4', '001g', '2_200615_1', '002g', '3_200615',
+#data collected by 20200923 at Chengfei
+Train_Name_Plane = ['0_20200615_4', '001g', '2_200615_1', '002g', '3_200615',
                     '005g', '046g', '051g', '166g',
                     '0602(1)', '0602(4)', '0602(5)', '0602(2)',
                     '20200618_0110g','20200618_0111g', '20200618_0112g', '20200618_0115g',
@@ -187,24 +234,21 @@ train_name_plane = ['0_20200615_4', '001g', '2_200615_1', '002g', '3_200615',
                     '20200923_0018g', '20200923_0021g']
 
 
-def get_files(Shuffle=True, path='./mat/plane/', sub_frame=False):
-    '''
-    :param Shuffle: whether shuffle data
-    :param path: path to load mat files
-    :param sub_frame:whether subtract the first frame
-    :return:training data and labels
-    '''
-    filenames = os.listdir(path)
+def get_files():
+    filenames = os.listdir(args.data_path)
     datas = []
     labels = []
     for filename in filenames:
         name0 = os.path.splitext(filename)[0]
         name1 = os.path.splitext(filename)[1]
         if name1 == '.mat':
-            path1 = path + filename
-            if name0 in train_name_plane:
-                print(name0)
-                datas, labels = one_data_process_plane2D(name0, path1, datas, labels, sub_frame)
+            path1 = args.data_path + filename
+            if name0 in Train_Name_Plane:
+                print('train data name:{}'.format(name0))
+                if args.data_mode == '2D':
+                    datas, labels = one_data_process_plane2D(name0, path1, datas, labels)
+                elif args.data_mode == '3D':
+                    datas, labels = one_data_process_plane3D(name0, path1, datas, labels)
 
     datas = np.array(datas)
     labels = np.array(labels)
@@ -212,15 +256,11 @@ def get_files(Shuffle=True, path='./mat/plane/', sub_frame=False):
     labels[labels > 0.5] = 1
     labels[labels <= 0.5] = 0
     labels = np.expand_dims(labels, axis=-1)
-    assert len(datas.shape) == 4
-    assert len(labels.shape) == 4
-    if Shuffle:
-        print('train data shape:{}'.format(datas.shape))
+    logging.info('train data shape:{}'.format(datas.shape))
+    if args.shuffle:
         datas, labels = shuffle(datas, labels)
-
         return datas, labels
     else:
-        print(datas.shape)
         return datas, labels
 
 
@@ -237,44 +277,62 @@ def win_test_files(path='./mat/plane/'):
         name0 = os.path.splitext(filename)[0]
         name1 = os.path.splitext(filename)[1]
         if name1 == '.mat':
-            if name0 not in train_name_plane:
+            if name0 not in Train_Name_Plane:
                 print(name0)
                 path1 = path + filename
-                datas, num_slices, names = win_test_data_process(name0, path1, datas, num_slices,
-                                                                        names)
+                datas, num_slices, names = win_test_data_process(name0, path1, datas, num_slices,names)
     datas = np.array(datas)
-    datas = np.reshape(datas, (-1, args.height, args.width))
-    datas = np.expand_dims(datas, -1)
-    print('datas shape', datas.shape)
+    datas = np.expand_dims(datas, axis=-1)
+    logging.info('datas shape', datas.shape)
     return datas, num_slices, names
 
 
-def main(ids):
-    args.sub_frame = False
-    if args.mode == 0:
-        X_train, y_train = get_files(Shuffle=True, path=args.data_path, sub_frame=args.sub_frame)
 
-        model = Nest_Net()
+def main(ids):
+    # gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+    # for gpu in gpus:
+    #     tf.config.experimental.set_memory_growth(gpu, True)
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+
+    if not os.path.exists(args.log_path):
+        os.mkdir(args.log_path)
+
+    # set up the logger
+    set_logger(os.path.join(args.log_path, 'train.log'))
+    seeds(args.seed)
+
+    if args.mode == 'train':
+        X_train, y_train = get_files()
+        if args.model_mode == 'UNet++':
+            model = Nest_Net()
+        elif args.model_mode == 'UNet':
+            model = UNet()
+        elif args.model_mode == 'UNet+pca':
+            model = UNet_plus3D_pca()
+        else:
+            model = UNet_plus3D_st_pca()
         # model.load_weights('./huv25.h5',by_name=True)
-        model.compile(optimizer=tf.keras.optimizers.Adam(lr=1e-4), loss=tf.keras.losses.binary_crossentropy,
+        model.compile(optimizer=tf.keras.optimizers.Adam(lr=1e-4), loss=[bce_dice_loss],
                       metrics=["accuracy"])
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', patience=5,
                                       verbose=1, min_lr=1e-6)
 
-        model_checkpoint = ModelCheckpoint('./huv{}.h5'.format(ids), monitor='val_loss',
+        model_checkpoint = ModelCheckpoint('./huv{}_{}_sub{}_seed{}.h5'.format(ids, args.model_mode, args.sub_frame, args.seed),
+                                           monitor='val_loss',
                                            verbose=1, save_best_only=True)
         early_stoping = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=3, mode='min',
                                       restore_best_weights=True)
-        history = model.fit(X_train, y_train, batch_size=16, epochs=30, verbose=1, validation_split=0.2,
+        history = model.fit(X_train, y_train, batch_size=args.batchsize, epochs=args.epoch, verbose=1, validation_split=0.2,
                             callbacks=[reduce_lr, model_checkpoint, early_stoping])
         # history_df = pd.DataFrame(history.history)
-        # history_df.to_csv('../portable2/history.csv', index=False)
+        # history_df.to_csv('./history.csv', index=False)
     else:
         x_test, num_slices, names = win_test_files()
-        model = tf.keras.models.load_model('./huv{}.h5'.format(ids), custom_objects={'bce_dice_loss': bce_dice_loss,
-                                                                                  'dice_coef': dice_coef,
-                                                                                  'dice_coef_loss': dice_coef_loss,
-                                                                                  'width': args.width, 'height': args.height})
+        model = tf.keras.models.load_model('./huv{}_{}_sub{}_seed{}.h5'.format(ids, args.model_mode, args.sub_frame, args.seed),
+                                           custom_objects={'bce_dice_loss': bce_dice_loss,
+                                                            'dice_coef': dice_coef,
+                                                            'dice_coef_loss': dice_coef_loss,
+                                                            'width': args.width, 'height': args.height, 'Time':args.Time})
         y_predict = model.predict(x=x_test, batch_size=2)
 
         #########
@@ -297,14 +355,15 @@ def main(ids):
             xy = np.array((xy * 255.), dtype='uint8')
             xy = Image.fromarray(xy)
             xy.save('{}/hu{}_xy_{}_{}_1.bmp'.format(save_path, ids, names[i], i), 'bmp')
+            # plt.imsave('{}/hu{}_xy_{}_{}_1.bmp'.format(save_path, ids, names[i], i), xy, cmap='gray')
 
-            # temp_xy = regions(xy, y_array)
-            # temp_xy = Image.fromarray(temp_xy)
-            # temp_xy.save('{}/hu{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
+            if args.draw_region:
+                temp_xy = regions(xy, y_array)
+                temp_xy = Image.fromarray(temp_xy)
+                temp_xy.save('{}/hu{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
 
-
-args.mode = 1
-main(ids=args.ids)
+if __name__ == '__main__':
+    main(ids=args.ids)
 
 
 
