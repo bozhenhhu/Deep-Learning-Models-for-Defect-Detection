@@ -8,7 +8,7 @@ If you want to know more about the infrared thermal data and some relevant deep 
 You can find the above papers, and other more papers through this link:  http://faculty.uestc.edu.cn/gaobin/zh_cn/lwcg/153392/list/index.htm  
 ## 2.Data  
 This is flat type data from Optical Pulsed Thermography(OPT) system, you can download it through Google cloud storage by this link:
-https://drive.google.com/file/d/1r_x-cFsKaQtXRl5yehhfvLQ3pTXE8DKI/view?usp=sharing  
+https://drive.google.com/file/d/1r_x-cFsKaQtXRl5yehhfvLQ3pTXE8DKI/view?usp=sharing
 After download the `data-plane_0.tar.gz`, put this in the `research` folder, then:   
 >>tar zxvf plane_0.tar.gz  
 >>mkdir pca_imgs   
