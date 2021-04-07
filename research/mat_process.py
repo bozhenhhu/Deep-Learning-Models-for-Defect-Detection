@@ -3,11 +3,10 @@ from tensorflow.keras.callbacks import *
 import copy
 from sklearn.utils import shuffle
 
-
 import matplotlib.image as mpimg
-from research.augmentaton import *
-from research.models import *
-from research.utils import *
+from augmentaton import *
+from models import *
+from utils import *
 
 
 # Custom loss function
@@ -196,7 +195,7 @@ def win_test_data_process(name0, path1, datas, num_slices, names, sub_frame=Fals
         elif t_len >= 64:
             data = data[:, :, 0:64]  # data length:64
         else:
-            return datas, labels
+            return datas, num_slices, names
         data = data.astype(np.float32) / 255.
         data = data - np.tile(sub[:, :, np.newaxis], (1, 1, data.shape[2]))
 
@@ -244,7 +243,7 @@ def get_files():
         if name1 == '.mat':
             path1 = args.data_path + filename
             if name0 in Train_Name_Plane:
-                print('train data name:{}'.format(name0))
+                logging.info('train data name:{}'.format(name0))
                 if args.data_mode == '2D':
                     datas, labels = one_data_process_plane2D(name0, path1, datas, labels)
                 elif args.data_mode == '3D':
@@ -300,6 +299,7 @@ def main(ids):
     # set up the logger
     set_logger(os.path.join(args.log_path, 'train.log'))
     seeds(args.seed)
+    logging.info(args)
 
     if args.mode == 'train':
         X_train, y_train = get_files()
@@ -317,7 +317,7 @@ def main(ids):
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', patience=5,
                                       verbose=1, min_lr=1e-6)
 
-        model_checkpoint = ModelCheckpoint('./huv{}_{}_sub{}_seed{}.h5'.format(ids, args.model_mode, args.sub_frame, args.seed),
+        model_checkpoint = ModelCheckpoint('./v{}_{}_sub{}.h5'.format(ids, args.model_mode, args.sub_frame),
                                            monitor='val_loss',
                                            verbose=1, save_best_only=True)
         early_stoping = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=3, mode='min',
@@ -328,7 +328,7 @@ def main(ids):
         # history_df.to_csv('./history.csv', index=False)
     else:
         x_test, num_slices, names = win_test_files()
-        model = tf.keras.models.load_model('./huv{}_{}_sub{}_seed{}.h5'.format(ids, args.model_mode, args.sub_frame, args.seed),
+        model = tf.keras.models.load_model('./v{}_{}_sub{}.h5'.format(ids, args.model_mode, args.sub_frame),
                                            custom_objects={'bce_dice_loss': bce_dice_loss,
                                                             'dice_coef': dice_coef,
                                                             'dice_coef_loss': dice_coef_loss,
@@ -347,8 +347,12 @@ def main(ids):
             os.makedirs(save_path)
 
         for i in range(y_predict.shape[0]):
-            y_array = y_predict[i, :, :, 0]
-            x_array = x_test[i, :, :, 0]
+            if args.data_mode == '2D':
+                y_array = y_predict[i, :, :, 0]
+                x_array = x_test[i, :, :, 0]
+            else:
+                y_array = y_predict[i, 10, :, :, 0]
+                x_array = x_test[i, 10, :, :, 0]
             x_array = np.array((x_array * 255.), dtype='uint8')
             y_array = np.array((y_array * 255.), dtype='uint8')
             xy = x_array + y_array
@@ -361,6 +365,7 @@ def main(ids):
                 temp_xy = regions(xy, y_array)
                 temp_xy = Image.fromarray(temp_xy)
                 temp_xy.save('{}/hu{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
+
 
 if __name__ == '__main__':
     main(ids=args.ids)
