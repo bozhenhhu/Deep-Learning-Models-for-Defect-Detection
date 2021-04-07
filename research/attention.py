@@ -73,3 +73,4 @@ def ECA(x, dim, k=3, gamma=2, b=1):
     attention = Reshape((1, 1, dim), name='reshape2')(attention)
     scale = multiply([x, attention], name='multiply')
     return scale
+
