@@ -347,7 +347,7 @@ def main(ids):
             os.makedirs(save_path)
 
         for i in range(y_predict.shape[0]):
-            if args.data_mode == '2D':
+            if args.data_mode == '3D' and not args.use_pca:
                 y_array = y_predict[i, :, :, 0]
                 x_array = x_test[i, :, :, 0]
             else:
