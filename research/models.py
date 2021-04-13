@@ -162,11 +162,13 @@ def UNet_plus3D_pca(num_class=1):
         conv1_4 = Conv2D(36, 3, activation='relu', padding='same', kernel_initializer='he_normal',
                          kernel_regularizer=l2(1e-4),
                          name='pca_conv_2')(conv1_4)
-    #################################
-
-    conv1_4_1 = Conv2D(2, 3, activation='relu', kernel_initializer='he_normal',padding='same')(conv1_4)
-    nestnet_output_4 = Conv2D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
-                              padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
+        conv1_4_1 = Conv2D(2, 3, activation='relu', kernel_initializer='he_normal', padding='same')(conv1_4)
+        nestnet_output_4 = Conv2D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
+                                  padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
+    else:
+        conv1_4_1 = Conv3D(2, 3, activation='relu', kernel_initializer='he_normal', padding='same')(conv1_4)
+        nestnet_output_4 = Conv3D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
+                                  padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
 
     model = tf.keras.Model(input=img_input, output=[nestnet_output_4])
     print(model.summary())
@@ -271,11 +273,14 @@ def UNet_plus3D_st_pca(num_class=1):
         conv1_4 = Conv2D(36, 3, activation='relu', padding='same', kernel_initializer='he_normal',
                          kernel_regularizer=l2(1e-4),
                          name='pca_conv_2')(conv1_4)
-    #################################
 
-    conv1_4_1 = Conv2D(2, 3, activation='relu', kernel_initializer='he_normal',padding='same')(conv1_4)
-    nestnet_output_4 = Conv2D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
-                              padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
+        conv1_4_1 = Conv2D(2, 3, activation='relu', kernel_initializer='he_normal',padding='same')(conv1_4)
+        nestnet_output_4 = Conv2D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
+                                  padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
+    else:
+        conv1_4_1 = Conv3D(2, 3, activation='relu', kernel_initializer='he_normal', padding='same')(conv1_4)
+        nestnet_output_4 = Conv3D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
+                                  padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
 
     model = tf.keras.Model(input=img_input, output=[nestnet_output_4])
     print(model.summary())
