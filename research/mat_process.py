@@ -154,7 +154,7 @@ def one_data_process_plane2D(name0, path1, datas, labels):
     return datas, labels
 
 
-def win_test_data_process(name0, path1, datas, num_slices, names, sub_frame=False):
+def win_test_data_process(name0, path1, datas, num_slices, names):
     data_struct = sio.loadmat(path1)
     data = data_struct['data']
 
@@ -181,6 +181,7 @@ def win_test_data_process(name0, path1, datas, num_slices, names, sub_frame=Fals
             if pre_frame.shape != (args.height, args.width):
                 pre_frame = cv2.resize(pre_frame, (args.height, args.width))
             datas.append(pre_frame)
+            names.append(name0)
     elif args.data_mode == '3D':
         if t_len >= 220:
             data = data[:, :, -190:-30]  # data length:160
@@ -207,8 +208,7 @@ def win_test_data_process(name0, path1, datas, num_slices, names, sub_frame=Fals
                 pre_frame = data[:, :, d[i]]
                 data_[i, :, :] = cv2.resize(pre_frame, (args.height, args.width))
             datas.append(data_)
-
-    names.append(name0)
+            names.append(name0)
     num_slices.append(len(datas))
 
     print('since added {}, the number of slices is {}'.format(names[-1], num_slices[-1]))
@@ -282,7 +282,7 @@ def win_test_files(path='./mat/plane/'):
                 datas, num_slices, names = win_test_data_process(name0, path1, datas, num_slices,names)
     datas = np.array(datas)
     datas = np.expand_dims(datas, axis=-1)
-    logging.info('datas shape', datas.shape)
+    logging.info('test datas shape:{}'.format(datas.shape))
     return datas, num_slices, names
 
 
@@ -309,7 +309,7 @@ def main(ids):
             model = UNet()
         elif args.model_mode == 'UNet+pca':
             model = UNet_plus3D_pca()
-        else:
+        elif args.model_mode == 'UNetpa':
             model = UNet_plus3D_st_pca()
         # model.load_weights('./huv25.h5',by_name=True)
         model.compile(optimizer=tf.keras.optimizers.Adam(lr=1e-4), loss=[bce_dice_loss],
@@ -347,24 +347,24 @@ def main(ids):
             os.makedirs(save_path)
 
         for i in range(y_predict.shape[0]):
-            if args.data_mode == '3D' and not args.use_pca:
-                y_array = y_predict[i, :, :, 0]
-                x_array = x_test[i, :, :, 0]
-            else:
+            if args.model_mode in ['UNet+pca', 'UNetpa'] and args.use_pca==False:
                 y_array = y_predict[i, 10, :, :, 0]
                 x_array = x_test[i, 10, :, :, 0]
+            else:
+                y_array = y_predict[i, :, :, 0]
+                x_array = x_test[i, :, :, 0]
             x_array = np.array((x_array * 255.), dtype='uint8')
             y_array = np.array((y_array * 255.), dtype='uint8')
             xy = x_array + y_array
             xy = np.array((xy * 255.), dtype='uint8')
             xy = Image.fromarray(xy)
-            xy.save('{}/hu{}_xy_{}_{}_1.bmp'.format(save_path, ids, names[i], i), 'bmp')
-            # plt.imsave('{}/hu{}_xy_{}_{}_1.bmp'.format(save_path, ids, names[i], i), xy, cmap='gray')
+            xy.save('{}/v{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
+            # plt.imsave('{}/hu{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), xy, cmap='gray')
 
             if args.draw_region:
                 temp_xy = regions(xy, y_array)
                 temp_xy = Image.fromarray(temp_xy)
-                temp_xy.save('{}/hu{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
+                temp_xy.save('{}/v{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
 
 
 if __name__ == '__main__':
