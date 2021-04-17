@@ -81,16 +81,28 @@ def one_data_process_plane3D(name0, path1, datas, labels):
 
     data = data.astype(np.float32) / 255.
     data = data - np.tile(sub[:, :, np.newaxis], (1, 1, data.shape[2]))
-
-    data_ = np.zeros((args.Time, args.height, args.width))
-    num = data.shape[2]//args.Time
-    for k in range(num):
-        d = list(np.arange(start=k, stop=data.shape[2], step=num))
-        for i in range(len(d)):
-            pre_frame = data[:, :, d[i]]
-            data_[i, :, :] = cv2.resize(pre_frame, (args.height, args.width))
-        datas.append(data_)
-        labels.append(img)
+    if args.model_mode in ['UNet+pca', 'UNetpa'] and args.use_pca == False:
+        data_ = np.zeros((args.Time, args.height, args.width))
+        label_ = np.zeros((args.Time, args.height, args.width))
+        num = data.shape[2]//args.Time
+        for k in range(num):
+            d = list(np.arange(start=k, stop=data.shape[2], step=num))
+            for i in range(len(d)):
+                pre_frame = data[:, :, d[i]]
+                data_[i, :, :] = cv2.resize(pre_frame, (args.height, args.width))
+                label_[i, :, :] = img
+            datas.append(data_)
+            labels.append(label_)
+    else:
+        data_ = np.zeros((args.Time, args.height, args.width))
+        num = data.shape[2] // args.Time
+        for k in range(num):
+            d = list(np.arange(start=k, stop=data.shape[2], step=num))
+            for i in range(len(d)):
+                pre_frame = data[:, :, d[i]]
+                data_[i, :, :] = cv2.resize(pre_frame, (args.height, args.width))
+            datas.append(data_)
+            labels.append(img)
     return datas, labels
 
 
