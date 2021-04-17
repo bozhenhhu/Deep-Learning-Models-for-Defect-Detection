@@ -48,7 +48,7 @@ def pca_tf(x, h, w):
     for i in range(args.pca_num):
         pca_.append(tf.reshape(pca[i, :], [h, w]))
     pca_ = tf.stack(pca_)
-    pca_ = tf.reshape(pca_, [4, args.height, args.width])
+    pca_ = tf.reshape(pca_, [args.pca_num, args.height, args.width])
     pca_ = tf.transpose(pca_, perm=[1, 2, 0])
     return pca_
 
@@ -73,7 +73,7 @@ def antirectifier(input):
 def antirectifier_output_shape(input_shape):
     shape = list(input_shape)
     assert len(shape) == 5  # only valid for 3D tensors
-    new_shape = list([shape[0], shape[2], shape[3], 4])
+    new_shape = list([shape[0], shape[2], shape[3], args.pca_num])
     return tuple(new_shape)
 
 
@@ -170,7 +170,7 @@ def UNet_plus3D_pca(num_class=1):
         nestnet_output_4 = Conv3D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
                                   padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
 
-    model = tf.keras.Model(input=img_input, output=[nestnet_output_4])
+    model = tf.keras.Model(inputs=img_input, outputs=[nestnet_output_4])
     print(model.summary())
     return model
 
@@ -190,7 +190,7 @@ def UNet_plus3D_st_pca(num_class=1):
     conv1_2 = standard_unit3D(conv1_2, stage='12', nb_filter=nb_filter[0])
 
     conv3_1 = standard_unit3D(pool2, stage='31', nb_filter=nb_filter[2])
-    conv3_1 = ECA(conv3_1, dim=nb_filter[2])
+    conv3_1 = ECA3D(conv3_1, dim=nb_filter[2], stage='31')
     conv3_1 = st_Attention(conv3_1, stage='31')
     pool3 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2), name='pool3')(conv3_1)
 
@@ -205,7 +205,7 @@ def UNet_plus3D_st_pca(num_class=1):
     conv1_3 = standard_unit3D(conv1_3, stage='13', nb_filter=nb_filter[0])
 
     conv4_1 = standard_unit3D(pool3, stage='41', nb_filter=nb_filter[3])
-    conv4_1 = ECA(conv4_1, dim=nb_filter[3])
+    conv4_1 = ECA3D(conv4_1, dim=nb_filter[3], stage='41')
     conv4_1 = st_Attention(conv4_1, stage='41')
     pool4 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2), name='pool4')(conv4_1)
 
@@ -213,7 +213,7 @@ def UNet_plus3D_st_pca(num_class=1):
                    kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv4_1))
     conv3_2 = Concatenate(name='merge32', axis=4)([up3_2, conv3_1])
     conv3_2 = standard_unit3D(conv3_2, stage='32', nb_filter=nb_filter[2])
-    conv3_2 = ECA(conv3_2, dim=nb_filter[2])
+    conv3_2 = ECA3D(conv3_2, dim=nb_filter[2], stage='32')
     conv3_2 = st_Attention(conv3_2, stage='32')
 
     up2_3 = Conv3D(nb_filter[1], 2, name='up23', padding='same', activation='relu',
@@ -227,21 +227,21 @@ def UNet_plus3D_st_pca(num_class=1):
     conv1_4 = standard_unit3D(conv1_4, stage='14', nb_filter=nb_filter[0])
 
     conv5_1 = standard_unit3D(pool4, stage='51', nb_filter=nb_filter[4])
-    conv5_1 = ECA(conv5_1, dim=nb_filter[4])
+    conv5_1 = ECA3D(conv5_1, dim=nb_filter[4], stage='51')
     conv5_1 = st_Attention(conv5_1, stage='51')
 
     up4_2 = Conv3D(nb_filter[3], 2, name='up42', padding='same', activation='relu',
                    kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv5_1))
     conv4_2 = Concatenate(name='merge42', axis=4)([up4_2, conv4_1])
     conv4_2 = standard_unit3D(conv4_2, stage='42', nb_filter=nb_filter[3])
-    conv4_2 = ECA(conv4_2, dim=nb_filter[3])
+    conv4_2 = ECA3D(conv4_2, dim=nb_filter[3], stage='42')
     conv4_2 = st_Attention(conv4_2, stage='42')
 
     up3_3 = Conv3D(nb_filter[2], 2, name='up33', padding='same', activation='relu',
                    kernel_initializer='he_normal')(UpSampling3D(size=(2, 2, 2))(conv4_2))
     conv3_3 = Concatenate(name='merge33', axis=4)([up3_3, conv3_1, conv3_2])
     conv3_3 = standard_unit3D(conv3_3, stage='33', nb_filter=nb_filter[2])
-    conv3_3 = ECA(conv3_3, dim=nb_filter[2])
+    conv3_3 = ECA3D(conv3_3, dim=nb_filter[2], stage='33')
     conv3_3 = st_Attention(conv3_3, stage='33')
 
     up2_4 = Conv3D(nb_filter[1], 2, name='up24', padding='same', activation='relu',
@@ -282,7 +282,7 @@ def UNet_plus3D_st_pca(num_class=1):
         nestnet_output_4 = Conv3D(num_class, 1, activation='sigmoid', name='output_4', kernel_initializer='he_normal',
                                   padding='same', kernel_regularizer=l2(1e-4))(conv1_4_1)
 
-    model = tf.keras.Model(input=img_input, output=[nestnet_output_4])
+    model = tf.keras.Model(inputs=img_input, outputs=[nestnet_output_4])
     print(model.summary())
     return model
 
@@ -356,7 +356,7 @@ def Nest_Net(img_rows=args.height, img_cols=args.width, color_type=1, num_class=
                               padding='same', kernel_regularizer=l2(1e-4))(conv1_5)
 
     if deep_supervision:
-        model = tf.keras.Model(input=img_input, output=[nestnet_output_3])
+        model = tf.keras.Model(inputs=img_input, outputs=[nestnet_output_3])
     else:
         model = tf.keras.Model(inputs=img_input, outputs=[nestnet_output_4])
     print(model.summary())
@@ -415,7 +415,7 @@ def UNet():
     conv10 = Conv2D(1, 1, activation='sigmoid')(conv10)
 
     # conv10 = core.Reshape((nClasses, input_height * input_width))(conv10)
-    model = tf.keras.Model(input=inputs,output=conv10)
+    model = tf.keras.Model(inputs=inputs, outputs=conv10)
     print(model.summary())
     return model
 
