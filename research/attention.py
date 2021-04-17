@@ -59,18 +59,30 @@ def st_Attention(x, stage, t=1, k=3):
     return scale
 
 
-def ECA(x, dim, k=3, gamma=2, b=1):
+def ECA(x, dim, k=3, gamma=2, b=1, stage='eca'):
     '''
     paper:https://arxiv.org/abs/1910.03151?context=cs
     '''
-    squeeze = GlobalAveragePooling2D(name='squeeze')(x)
+    squeeze = GlobalAveragePooling2D(name=stage + 'squeeze')(x)
     # t = int(abs((np.log2(dim)+b)/gamma))
     # k = t if t % 2 else t + 1 #3
     # print('se k:',k)
-    attention = Reshape((dim, 1), name='reshape1')(squeeze)
+    attention = Reshape((dim, 1), name=stage + 'reshape1')(squeeze)
     attention = Conv1D(filters=1, kernel_size=k, padding='same', activation='sigmoid', use_bias=False)(attention)
     attention = Permute((2, 1))(attention)
-    attention = Reshape((1, 1, dim), name='reshape2')(attention)
-    scale = multiply([x, attention], name='multiply')
+    attention = Reshape((1, 1, dim), name=stage + 'reshape2')(attention)
+    scale = multiply([x, attention], name=stage + 'multiply')
     return scale
 
+def ECA3D(x, dim, stage):
+    if dim > 128:
+        k = 5
+    else:
+        k = 3
+    squeeze = GlobalAveragePooling3D(name=stage + 'squeeze')(x)
+    attention = Reshape((dim, 1), name=stage + 'reshape1')(squeeze)
+    attention = Conv1D(filters=1, kernel_size=k, padding='same', activation='sigmoid', use_bias=False)(attention)
+    attention = Permute((2, 1))(attention)
+    attention = Reshape((1, 1, 1, dim), name=stage + 'reshape2')(attention)
+    scale = multiply([x, attention], name=stage + 'multiply')
+    return scale
