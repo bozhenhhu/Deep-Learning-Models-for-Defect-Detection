@@ -345,7 +345,12 @@ def main(ids):
                                                             'dice_coef': dice_coef,
                                                             'dice_coef_loss': dice_coef_loss,
                                                             'width': args.width, 'height': args.height, 'Time':args.Time})
-        y_predict = model.predict(x=x_test, batch_size=2)
+        #get intermediate output
+        # print(model.summary())
+        # conv2d = tf.keras.models.Model(inputs=model.input, outputs=model.get_layer('conv2d').output)
+        # y_predict = conv2d.predict(x=x_test, batch_size=1)
+
+        y_predict = model.predict(x=x_test, batch_size=1)
 
         #########
         save_path = './DefectNet/Result{}/'.format(ids)
@@ -358,25 +363,34 @@ def main(ids):
         else:
             os.makedirs(save_path)
 
+        # for i in range(y_predict.shape[0]):
+        #     plt.imsave('{}/hu{}_y_{}_{}_0.png'.format(save_path, ids, names[i], i), y_predict[i, :, :, 0], cmap='gray')
+        #     plt.imsave('{}/hu{}_y_{}_{}_1.png'.format(save_path, ids, names[i], i), y_predict[i, :, :, 1], cmap='gray')
+
         for i in range(y_predict.shape[0]):
-            if args.model_mode in ['UNet+pca', 'UNetpa'] and args.use_pca==False:
-                y_array = y_predict[i, 10, :, :, 0]
+            if args.model_mode in ['UNet+pca', 'UNetpa']:
                 x_array = x_test[i, 10, :, :, 0]
+                if args.use_pca==False:
+                    y_array = y_predict[i, 10, :, :, 0]
+                else:
+                    y_array = y_predict[i, :, :, 0]
             else:
                 y_array = y_predict[i, :, :, 0]
                 x_array = x_test[i, :, :, 0]
-            x_array = np.array((x_array * 255.), dtype='uint8')
-            y_array = np.array((y_array * 255.), dtype='uint8')
-            xy = x_array + y_array
-            xy = np.array((xy * 255.), dtype='uint8')
-            xy = Image.fromarray(xy)
-            xy.save('{}/v{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
-            # plt.imsave('{}/hu{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), xy, cmap='gray')
-
-            if args.draw_region:
-                temp_xy = regions(xy, y_array)
-                temp_xy = Image.fromarray(temp_xy)
-                temp_xy.save('{}/v{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
+            if args.save_mode == 'bmp':
+                x_array = np.array((x_array * 255.), dtype='uint8')
+                y_array = np.array((y_array * 255.), dtype='uint8')
+                xy = x_array + y_array
+                xy = np.array((xy * 255.), dtype='uint8')
+                xy = Image.fromarray(xy)
+                xy.save('{}/v{}_xy_{}_{}.bmp'.format(save_path, ids, names[i], i), 'bmp')
+                if args.draw_region:
+                    temp_xy = regions(xy, y_array)
+                    temp_xy = Image.fromarray(temp_xy)
+                    temp_xy.save('{}/v{}_xy_{}_{}_rect.bmp'.format(save_path, ids, names[i], i), 'bmp')
+            elif args.save_mode == 'png':
+                xy = x_array + y_array
+                plt.imsave('{}/hu{}_xy_{}_{}.png'.format(save_path, ids, names[i], i), xy, cmap='gray')
 
 
 if __name__ == '__main__':
