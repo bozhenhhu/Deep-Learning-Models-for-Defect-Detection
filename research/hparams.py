@@ -17,7 +17,7 @@ def Hparams():
     parser.add_argument('--Time', type=int, default=16)
 
     parser.add_argument('--seed', type=int, default=2020, help='seed for this program')
-    parser.add_argument('--mode', type=str, default='train', help='train,test')
+    parser.add_argument('--mode', type=str, default='test', help='train,test')
     parser.add_argument('--data_mode', type=str, default='3D', help='2D,3D')
     parser.add_argument('--ids', type=int, default=28)
     parser.add_argument('--sub_frame', type=str, default='last_mean', help='first, last, last_mean, None')
@@ -31,9 +31,10 @@ def Hparams():
     parser.add_argument('--sample_rate', type=int, default=2)
 
     parser.add_argument('--model_mode', type=str, default='UNetpa', help='UNet++,UNet,UNet+pca, UNetpa')
+    parser.add_argument('--save_mode', type=str, default='png', help='bmp, png')
     parser.add_argument('--epoch', type=int, default=40)
 
-    parser.add_argument('--gpu_id', type=str, default='0')
+    parser.add_argument('--gpu_id', type=str, default='-1')
     parser.add_argument('--draw_region', type=bool, default=False)
 
     #pca
