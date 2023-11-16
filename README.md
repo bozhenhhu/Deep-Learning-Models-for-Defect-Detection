@@ -30,3 +30,17 @@ The converted labels can be seen in `research/labels` folder
 Now, in the `research` folder, it contains several methods to process these data, including PCA, K-Means, Region-Growing, LSTM, UNet, UNet++..., apart from these, it also has some channel and spatial attention blocks, several loss functions.... We are working hard and struggling to give more examples and more robust models. 
 ## 6.Issues
 When you process these thermal data, you can easily find that you only have a small number of samples, so you need to consider Data Augmentation, Class Imbalance. Moreover, these thermal data is similar to each other, which suffers from low resolution, high noise as well as uneven heating, so maybe you have to pretrain, reduce noise, and avoid overfitting, it is easily to overfit using supervised learning.Sometimes, if necessary, you also need to condiser thermal diffusion, it's difficult to calculate specific numbers of defect pixels in an infrared thermal image.
+## Reference
+
+```
+@article{hu2020lightweight,
+  title={A lightweight spatial and temporal multi-feature fusion network for defect detection},
+  author={Hu, Bozhen and Gao, Bin and Woo, Wai Lok and Ruan, Lingfeng and Jin, Jikun and Yang, Yang and Yu, Yongjie},
+  journal={IEEE Transactions on Image Processing},
+  volume={30},
+  pages={472--486},
+  year={2020},
+  publisher={IEEE}
+}
+```
+
